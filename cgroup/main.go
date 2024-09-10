@@ -20,4 +20,10 @@ func main( {
 		rate uint64 = 120
 		max int64 = 1000
 	)
+
+	res := cgroup2.Resources{
+		CPU: &cgroup2.CPU{
+			Max: cgroup2.NewCPUMax(&quota, &period), //CPU time: 200ms per 1 second
+		},
+	}
 })
