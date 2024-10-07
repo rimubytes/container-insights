@@ -71,5 +71,23 @@ func setupNewNetworkNamespace(processID int) {
 	}
 }
 
+// jointContainerNetworkNamespace sets the current process's network namespace to the one
+// specified by the given process ID
+func jointContainerNetworkNamespace(processID int) error {
+	nsMount := fmt.Sprintf("%s/%d", getNetNsPath(), processID)
+	fd, err := unix.Open(nsMount, unix.O_RDONLY, 0)
+	if err != nil {
+		log.Printf("Unable to open network namespace file: %v\n", err)
+		return err
+	}
+	defer unix.Close(fd)
+
+	if err := unix.Setns(fd, unix.CLONE_NEWNET); err != nil {
+		lod.Printf("Setns system call failed: %v\n", err)
+		return err
+	}
+	return nil
+}
+
 
 
