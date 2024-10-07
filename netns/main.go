@@ -34,3 +34,42 @@ func createDirsIfDontExist(dirs []string) error {
 	return nil
 }
 
+// setupNewNetworkNamespace creates a new network namespace for the given process ID.
+// It performs the following steps:
+// 1. Creates necessary directories
+// 2. Opens a bind mount file
+// 3. Saves the current network namespace
+// 4. Creates a new network namespace
+// 5. Bind mounts the new namespace to a file
+// 6. Sets the process back to the original namespace
+func setupNewNetworkNamespace(processID int) {
+	if _, err := createDirsIfDontExist([]string{gettNetNsPath()}); err != nil {
+		log.Fatalf("Failed to create directories: %v\n", err)
+	}
+
+	nsMount := fmt.Sprintf("%s/%d", getNetNsPath(), processID)
+	if _, err := syscall.Open(nsMount, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_EXCL, 0644); err != nil {
+		log.Fatalf("Unable to open bind mount file: %v\n", err)
+	}
+
+	fd, err := syscall.Open("/proc/self/ns/net", syscall.O_RDONLY, 0)
+	if err != nil {
+		log.Fatalf("Unable to open current network namespace: %v\n", err)
+	}
+	defer syscall.Close(fd)
+
+	if err := syscall.Unshare(syscall.CLONE_NEWNET); err != nil {
+		log.Fatalf("Unshare system call failed: %v\n", err)
+	}
+
+	if err := syscall.Mount("/proc/self/ns/net", nsMount, "bind", syscall.MS_BIND, ""); err != nil {
+		log.Fatalf("Mount system call failed: %v\n", err)
+	}
+
+	if err := unix.Setns(fd,syscall.CLONE_NEWNET); err != nil {
+		log.Fatalf("Setns system call failed: %v\n", err)
+	}
+}
+
+
+
