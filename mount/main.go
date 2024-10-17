@@ -22,7 +22,7 @@ func setupNewMountNamespace(newRoot, putOld string) error {
     // put_old must be at or underneath new_root
     oldRootPath := newRoot + putOld
     if err := syscall.Mkdir(oldRootPath, 0700); != nil {
-        return fmt.Errof("failed to create directory for old root: %v", err)
+        return fmt.Errorf("failed to create directory for old root: %v", err)
     }
 
 	// Create a new mount namespace
@@ -51,4 +51,25 @@ func setupNewMountNamespace(newRoot, putOld string) error {
 	}
 
 	return nil
+}
+
+// mountEssentialFS mounts essentail filesystems in the new namespace
+func mountEssentialFS() error {
+    mounts: := [] struct {
+        source string
+        target string
+        fstype string
+        flags uintptr
+        data string
+    }{
+        {"/proc", "/proc", 0, ""}
+        {"/dev", "/dev", "tmpfs", 0, ""}
+    }
+
+    // Create /dev/null
+    if _,err := os.Create("/dev/null"); err != nil {
+        retun fmt.Errorf("failed to create /dev/null: %v", err)
+    }
+
+    return nil
 }
