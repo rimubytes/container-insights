@@ -73,3 +73,52 @@ func mountEssentialFS() error {
 
     return nil
 }
+
+// getMountNamespace retrieves the current mount namespace
+func getMountNamespace() (string, error) {
+    out, err := exec.Command("readlink", "/proc/self/ns/mnt").Output()
+    if err != nil {
+        return "", fmt.Errorf("error reading namespace file: %v", err)
+    }
+    return string(out), nil
+}
+
+// runShell starts a shell in the new namespace
+func runShell() error {
+	cmd := exec.Command("/bin/sh")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func main() {
+	processID := os.Getpid()
+	log.Printf("Process ID: %d\n", processID)
+
+	oldNS, err := getMountNamespace()
+	if err != nil {
+		log.Fatalf("Failed to get old mount namespace: %v", err)
+	}
+	log.Printf("Process is in the old mount Namespace: %s", oldNS)
+
+	newRoot := "new_root"
+	putOld := "/old_root"
+
+	if err := setupNewMountNamespace(newRoot, putOld); err != nil {
+		log.Fatalf("Failed to setup new mount namespace: %v", err)
+	}
+
+	newNS, err := getMountNamespace()
+	if err != nil {
+		log.Fatalf("Failed to get new mount namespace: %v", err)
+	}
+	log.Printf("Process is now in the new mount Namespace: %s", newNS)
+
+	log.Println("Opening a shell (/bin/sh) in the new mount namespace")
+	log.Println("You can run commands like `mount`, 'lsns', etc.")
+
+	if err := runShell(); err != nil {
+		log.Fatalf("Failed to run shell: %v", err)
+	}
+}
